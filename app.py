@@ -7,6 +7,7 @@ from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from config import Config
 from models import User, db, bcrypt
 from forms import RegistrationForm, LoginForm, RequestResetForm, ResetPasswordForm
+from functools import wraps
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -16,9 +17,22 @@ bcrypt.init_app(app)
 login_manager = LoginManager(app)
 mail = Mail(app)
 
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 @app.route("/")
 def index():
     return render_template('index.html')
+
+@app.route("/internal")
+@login_required
+def internal():
+    return render_template('internal.html')
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -87,12 +101,23 @@ def reset_token(token):
         return redirect(url_for('login'))
     return render_template('reset_password.html', title='Reset Password', form=form)
 
+@app.route("/resend_activation", methods=['GET', 'POST'])
+def activation_request():
+    pass
+
+@app.route("/resend_activation/<token>", methods=['GET', 'POST'])
+def resend_activation(token):
+    pass
+
 def send_reset_email(user):
-    token = user.get_reset_token()
-    msg = Message('Password Reset Request',
-                  sender='noreply@demo.com',
-                  recipients=[user.email])
-    msg.body = f'''To reset your password, visit the following link: {url_for('reset_token', token=token, _external=True)}\nIf you did not make this request then simply ignore this email and no changes will be made.'''
+    token = user.create_reset_token()
+    url = url_for('reset_token', token=token, _external=True)
+    msg = Message('Password Reset Request', sender='noreply@demo.com', recipients=[user.email])
+    msg.html = f'''
+                To reset your password, visit the following link:<br>
+                <a href="{url}">{url}</a><br><br>
+                If you did not make this request then simply ignore this email and no changes will be made.
+                '''
     mail.send(msg)
 
 if __name__ == '__main__':

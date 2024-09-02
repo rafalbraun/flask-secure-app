@@ -7,6 +7,7 @@ $ pip install Flask
 pip freeze > requirements.txt
 pip install -r requirements.txt
 
+$ source venv/bin/activate
 $ export FLASK_APP=app
 $ flask shell
 >>> from app import db, User
