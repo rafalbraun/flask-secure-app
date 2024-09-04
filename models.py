@@ -18,13 +18,26 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String(60), nullable=False)
     active = db.Column(db.Boolean, nullable=False, default=False)
 
-    def create_reset_token(self, expires_sec=1):
-        s = Serializer(current_app.config['SECRET_KEY'], expires_in=3600, salt='custom-salt', algorithm_name='HS256')
+    def create_reset_token(self, expires_sec=1800):
+        s = Serializer(current_app.config['SECRET_KEY'], expires_in=1800, salt='password-salt')
         return s.dumps({'user_id': self.id}).decode('utf-8')
 
     @staticmethod
     def verify_reset_token(token):
-        s = Serializer(current_app.config['SECRET_KEY'], salt='custom-salt')
+        s = Serializer(current_app.config['SECRET_KEY'], salt='password-salt')
+        try:
+            user_id = s.loads(token)['user_id']
+        except:
+            return None
+        return User.query.get(user_id)
+
+    def create_activation_token(self, expires_sec=1800):
+        s = Serializer(current_app.config['SECRET_KEY'], expires_in=1800, salt='activation-salt')
+        return s.dumps({'user_id': self.id}).decode('utf-8')
+
+    @staticmethod
+    def verify_activation_token(token):
+        s = Serializer(current_app.config['SECRET_KEY'], salt='activation-salt')
         try:
             user_id = s.loads(token)['user_id']
         except:
